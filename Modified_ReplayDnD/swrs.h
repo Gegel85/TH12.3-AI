@@ -3,7 +3,7 @@
 
 // ---------------- ‚±‚±‚©‚çƒeƒ“ƒvƒŒ ----------------
 
-
+/*
 // ver1.10
 #define ADDR_NEW_FUNCTION			0x008116DC
 #define ADDR_DELETE_FUNCTION		0x008111FA
@@ -62,8 +62,8 @@
 #define ADDR_VTBL_SELECT_CL			0x00846524
 #define ADDR_GET_PACKAGED_BGM_CALLER	0x00418791
 #define ADDR_GET_PACKAGED_SFL_CALLER	0x00418AF1
-
-/*
+*/
+//*
 // ver1.10a
 #define ADDR_NEW_FUNCTION			0x0081FBDC
 #define ADDR_DELETE_FUNCTION		0x0081F6FA
@@ -122,7 +122,7 @@
 #define ADDR_VTBL_SELECT_CL			0x00857534
 #define ADDR_GET_PACKAGED_BGM_CALLER	0x00418BE1
 #define ADDR_GET_PACKAGED_SFL_CALLER	0x00418F41
-*/
+//*/
 
 #ifdef SWRS_USES_HASH
 extern const BYTE TARGET_HASH[16];

@@ -10,21 +10,21 @@ web = socket.socket()
 web.bind(ip_port)
 web.listen(10)
 
+random.seed();
+
 while True:
     try:
+        print("Waiting for connection")
         conn, addr = web.accept()
+        print("Connected !")
         while True:
             try:
-                conn.send(("%d %d" % (random.randint(0, 45),
-                                      random.randint(0, 45)))
-                          .encode())
+                conn.send(
+                    ("%d %d" % (random.randint(0, 45), random.randint(0, 45))).encode()
+                )
                 print(conn.recv(255).decode())
-            except KeyboardInterrupt:
-                break
             except Exception:
                 traceback.print_exc()
                 break
-    except KeyboardInterrupt:
-        break
     except Exception:
         traceback.print_exc()

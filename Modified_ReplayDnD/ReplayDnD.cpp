@@ -25,30 +25,39 @@ static DWORD s_origCSelect_OnProcess;
 static bool s_swrapt;
 static bool s_autoShutdown;
 
+static bool enabled;
+static unsigned short port = 5211;
+static char ip[16] = {'1', '2', '7', '.', '0', '.', '0', '.', '1' ,'\0'};
+static char replay[MAX_PATH];
+
 void setup_socket_client();
 
 int __fastcall CLogo_OnProcess(void *This)
 {
 	int ret = 2;
-	for (int i=0; i<3; i++) {
+	//for (int i=0; i<3; i++) {
 		ret = CLogo_Process(This);
-		if(ret == 2) {
-			if (__argc == 2) {
-				if(CInputManager_ReadReplay(g_inputMgr, __argv[1])) {
-					setup_socket_client();
-					s_swrapt = true;
-					// 入力があったように見せかける。END
-					*(BYTE*)((DWORD)g_inputMgrs + 0x74) = 0xFF;
-					// リプモードにチェンジ
-					SetBattleMode(3, 2);
-					ret = 6;
-				}
-			} else {
-				//*(BYTE*)((DWORD)g_inputMgrs + 0x74) = 0xFF;
-			
+
+		if (ret == 2 && enabled) {
+			FILE * fp = fopen("./AITunnel.log", "a+");
+			fprintf(fp, "Loading replay\n");
+			if(CInputManager_ReadReplay(g_inputMgr, replay)) {
+				fprintf(fp, "Success !\n");
+				fclose(fp);
+				setup_socket_client();
+				s_swrapt = true;
+				// 入力があったように見せかける。END
+				*(BYTE*)((DWORD)g_inputMgrs + 0x74) = 0xFF;
+				// リプモードにチェンジ
+				SetBattleMode(3, 2);
+				ret = 6;
+			}
+			else {
+				fprintf(fp, "Error :/\n");
+				fclose(fp);
 			}
 		}
-	}
+	//}
 	
 	return ret;
 }
@@ -71,35 +80,35 @@ void * p1_obj = NULL;
 void * p2_obj = NULL;
 
 void write_operation(int operation, int which) {
-    int first_d = operation / 9;
-    int next_d = (operation % 9) / 3;
-    int last_d = operation % 3;
+	int first_d = operation / 9;
+	int next_d = (operation % 9) / 3;
+	int last_d = operation % 3;
 
 	CharInput _input;
-    _input.lr = 0;
-    _input.ud = 0;
-    _input.a = 0;
-    _input.b = 0;
-    _input.c = 0;
-    _input.d = 0;
+	_input.lr = 0;
+	_input.ud = 0;
+	_input.a = 0;
+	_input.b = 0;
+	_input.c = 0;
+	_input.d = 0;
 	_input.ch = 0;
 	_input.s = 0;
-    if (next_d == 1)
-        _input.lr = -1;
+	if (next_d == 1)
+		_input.lr = -1;
 	else if (next_d == 2)
-        _input.lr = 1;
-    if (last_d == 1)
-        _input.ud = -1;
+		_input.lr = 1;
+	if (last_d == 1)
+		_input.ud = -1;
 	else if (last_d == 2)
-        _input.ud = 1;
-    if (first_d == 1)
-        _input.a = 1;
+		_input.ud = 1;
+	if (first_d == 1)
+		_input.a = 1;
 	else if (first_d == 2)
-        _input.b = 1;
+		_input.b = 1;
 	else if (first_d == 3)
-        _input.c = 1;
-    else if (first_d == 4)
-        _input.d = 1;
+		_input.c = 1;
+	else if (first_d == 4)
+		_input.d = 1;
 	if (which == 0)
 		*(CharInput*)((char*)p1_obj + 0x754) = _input;
 	else if (which == 1)
@@ -113,26 +122,26 @@ int encode_action(int which) {
 	else
 		_input = *(CharInput*)((char*)p2_obj + 0x754);
 	int first_d = 0, next_d = 0, last_d = 0;
-    if (_input.ud < 0)
-        last_d = 1;
-    if (_input.ud > 0)
-        last_d = 2;
-    if (_input.lr < 0)
-        next_d = 1;
-    if (_input.lr > 0)
-        next_d = 2;
-    if (_input.a > 0)
-        first_d = 1;
-    if (_input.b > 0)
-        first_d = 2;
-    if (_input.c > 0)
-        first_d = 3;
-    if (_input.d > 0)
-        first_d = 4;
-    /*if (_input.ch > 0)
-        now |= 256;
-    if (_input.s > 0)
-        now |= 512;*/
+	if (_input.ud < 0)
+		last_d = 1;
+	if (_input.ud > 0)
+		last_d = 2;
+	if (_input.lr < 0)
+		next_d = 1;
+	if (_input.lr > 0)
+		next_d = 2;
+	if (_input.a > 0)
+		first_d = 1;
+	if (_input.b > 0)
+		first_d = 2;
+	if (_input.c > 0)
+		first_d = 3;
+	if (_input.d > 0)
+		first_d = 4;
+	/*if (_input.ch > 0)
+		now |= 256;
+	if (_input.s > 0)
+		now |= 512;*/
 	return first_d * 9 + next_d * 3 + last_d;
 }
 
@@ -143,9 +152,12 @@ void setup_socket_client()
 	WORD sockVersion = MAKEWORD(2, 2);
 	WSADATA data;
 	int startup = 0;
+	FILE * fp = fopen("./AITunnel.log", "a+");
+	fprintf(fp, "Connecting to %s:%i\n", ip, port);
+	fclose(fp);
 	if((startup = WSAStartup(sockVersion, &data)) != 0)
 	{
-		FILE * fp = fopen("D:/1.log", "a+");
+		FILE * fp = fopen("AITunnel.log", "a+");
 		fprintf(fp, "Connection Failed: Startup\n");
 		if (startup == WSASYSNOTREADY)
 			fprintf(fp, "System Not Ready\n");
@@ -160,7 +172,7 @@ void setup_socket_client()
 	sclient = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if(sclient == INVALID_SOCKET)
 	{
-		FILE * fp = fopen("D:/1.log", "a+");
+		FILE * fp = fopen("AITunnel.log", "a+");
 		fprintf(fp, "Connection Failed: Invalid Socket\n");
 		fclose(fp);
 		return;
@@ -168,12 +180,12 @@ void setup_socket_client()
 
 	sockaddr_in serAddr;
 	serAddr.sin_family = AF_INET;
-	serAddr.sin_port = htons(5211);
-	serAddr.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+	serAddr.sin_port = htons(port);
+	serAddr.sin_addr.S_un.S_addr = inet_addr(ip);
 	if (connect(sclient, (sockaddr *)&serAddr, sizeof(serAddr)) == SOCKET_ERROR)
 	{
-		FILE * fp = fopen("D:/1.log", "a+");
-		fprintf(fp, "Connection Failed: Connect Socket Error\n");
+		FILE * fp = fopen("AITunnel.log", "a+");
+		fprintf(fp, "Connection Failed: Connect Socket Error (%s:%i)\n", inet_ntoa(serAddr.sin_addr), htons(serAddr.sin_port));
 		fclose(fp);
 		closesocket(sclient);
 		return;
@@ -189,7 +201,7 @@ int one_update(void * This) {
 	if (ret > 0)
 		recData[ret] = 0x00;
 
-	void * root = *((void **)0x008855C4);
+	void * root = *((void **)ADDR_BATTLE_MANAGER);
 	p1_obj = *(void**)((char *)root + 0x0c);
 	p2_obj = *(void**)((char *)root + 0x10);
 	int p1_act, p2_act;
@@ -203,18 +215,18 @@ int one_update(void * This) {
 	char sendData[255] = "";
 	// Pos1X Pos1Y Pos2X Pos2Y Char1 Char2 Input1 Input2 Hp1 Hp2 WeatherID WeatherCounter
 	sprintf(sendData, "%f %f %f %f %d %d %d %d %d %d %d %d",
-				*(float *)((char *)p1_obj + 0xEC),
-				*(float *)((char *)p1_obj + 0xF0),
-				*(float *)((char *)p2_obj + 0xEC),
-				*(float *)((char *)p2_obj + 0xF0),
-				*(int *)ADDR_LCHARID,
-				*(int *)ADDR_RCHARID,
-				encode_action(0),
-				encode_action(1),
-				(int)*(short *)((char *)p1_obj + 0x184),
-				(int)*(short *)((char *)p2_obj + 0x184),
-				*(int *)(0x008841A0),
-				*(int *)(0x008841AC));
+		*(float *)((char *)p1_obj + 0xEC),
+		*(float *)((char *)p1_obj + 0xF0),
+		*(float *)((char *)p2_obj + 0xEC),
+		*(float *)((char *)p2_obj + 0xF0),
+		*(int *)ADDR_LCHARID,
+		*(int *)ADDR_RCHARID,
+		encode_action(0),
+		encode_action(1),
+		(int)*(short *)((char *)p1_obj + 0x184),
+		(int)*(short *)((char *)p2_obj + 0x184),
+		*(int *)(0x008971C0),//*(int *)(0x008841A0),
+		*(unsigned short *)(0x008971CC));//*(int *)(0x008841AC));
 	send(sclient, sendData, strlen(sendData), 0);
 	/*FILE * fp = fopen("D:/1.log", "a+");
 	fprintf(fp, "%d %d\n", ret, send(sclient, sendData, strlen(sendData), 0));
@@ -301,7 +313,7 @@ int __fastcall CSelect_OnProcess(void *This)
 int __fastcall CBattle_OnProcess(void *This)
 {
 	int ret;
-	static int rate = 500;
+	static int rate = 1;//500;
 	for (int i=0; i<rate; i++) {
 		ret = one_update(This);
 		if (ret != 5) {
@@ -314,8 +326,15 @@ int __fastcall CBattle_OnProcess(void *This)
 // 設定ロード
 void LoadSettings(LPCSTR profilePath)
 {
+	FILE * fp = fopen("./AITunnel.log", "a+");
+	fprintf(fp, "Loading settings...\n");
 	// 自動シャットダウン
-	s_autoShutdown = GetPrivateProfileInt("ReplayDnD", "AutoShutdown", 1, profilePath) != 0;
+	port = GetPrivateProfileInt("AITunnel", "Port", 5311, profilePath);
+	enabled = GetPrivateProfileInt("AITunnel", "Enabled", 1, profilePath) != 0;
+	GetPrivateProfileString("AITunnel", "Ip", "127.0.0.1", ip, sizeof(ip), profilePath);
+	GetPrivateProfileString("AITunnel", "ReplayPath", "replay.rep", replay, sizeof(replay), profilePath);
+	fprintf(fp, "Enabled: %s, Ip: %s, Port: %i\n", enabled ? "true" : "false", ip, port);
+	fclose(fp);
 }
 
 extern "C"
@@ -331,8 +350,11 @@ __declspec(dllexport) bool Initialize(HMODULE hMyModule, HMODULE hParentModule)
 
 	GetModuleFileName(hMyModule, profilePath, 1024);
 	PathRemoveFileSpec(profilePath);
-	PathAppend(profilePath, "ReplayDnD.ini");
+	PathAppend(profilePath, "AITunnel.ini");
 	LoadSettings(profilePath);
+	FILE * fp = fopen("./AITunnel.log", "a+");
+	fprintf(fp, "Initializing...\n");
+	fclose(fp);
 
 	DWORD old;
 	::VirtualProtect((PVOID)rdata_Offset, rdata_Size, PAGE_EXECUTE_WRITECOPY, &old);
@@ -343,6 +365,9 @@ __declspec(dllexport) bool Initialize(HMODULE hMyModule, HMODULE hParentModule)
 	::VirtualProtect((PVOID)rdata_Offset, rdata_Size, old, &old);
 
 	::FlushInstructionCache(GetCurrentProcess(), NULL, 0);
+	fp = fopen("./AITunnel.log", "a+");
+	fprintf(fp, "Done...\n");
+	fclose(fp);
 	return true;
 }
 
